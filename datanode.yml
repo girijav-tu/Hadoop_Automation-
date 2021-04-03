@@ -1,0 +1,75 @@
+- name: Configuring the Datanode(Slave)
+  hosts: DataNode
+
+  vars_prompt:
+    - name: datanode_folder
+      prompt: Enter the folder name for Datanode
+      private: no
+
+    - name: master_ip
+      prompt: Enter the public IP address of Namenode 
+      private: no 
+
+  tasks:
+  - name: Copying the Java rpm  in Datanode 
+    copy:
+            src: /root/jdk-8u171-linux-x64.rpm 
+            dest: /root/
+
+  - name: Installing Java
+    shell: rpm -ivh /root/jdk-8u171-linux-x64.rpm 
+    ignore_errors: True
+
+  - name: Checking the installed version of Java 
+    shell: java -version  
+    
+  - name: Copying the Hadoop rpm in Datanode
+    copy:
+            src: /root/hadoop-1.2.1-1.x86_64.rpm 
+            dest: /root/
+
+  - name: Installing Hadoop
+    shell: rpm -ivh /root/hadoop-1.2.1-1.x86_64.rpm --force 
+    ignore_errors: True
+
+  - name: Checking the installed version of Hadoop
+    shell: hadoop version 
+
+  - name: Clearing the cache memory
+    shell: echo 3 > /proc/sys/vm/drop_caches
+
+  - name: Freeing cache memory
+    shell: free -m 
+   
+  - name: Creating a folder 
+    file:
+            path: "{{ datanode_folder }}"
+            state: directory
+
+  - name: Updating hdfs-site.xml file 
+    blockinfile:
+            path: "/etc/hadoop/hdfs-site.xml" 
+            insertafter: "<configuration>"
+            block: "
+            <property>
+            <name>dfs.data.dir</name>
+            <value>{{ datanode_folder }}</value>
+            </property>"
+
+  - name: Updating core-site.xml file 
+    blockinfile:
+            path: "/etc/hadoop/core-site.xml"
+            insertafter: "<configuration>"
+            block: "
+            <property>
+            <name>fs.default.name</name>
+            <value>hdfs://{{ master_ip }}:9001</value>
+            </property>"
+
+  - name: Starting the Datanode Services 
+    shell: hadoop-daemon.sh start datanode 
+
+  - name: Checking the jps status 
+    shell: jps 
+
+
